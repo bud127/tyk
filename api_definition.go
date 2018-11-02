@@ -142,7 +142,7 @@ type APISpec struct {
 	OrgSessionManager        SessionHandler
 	EventPaths               map[apidef.TykEvent][]config.TykEventHandler
 	Health                   HealthChecker
-	JSVM                     JSVM
+	JSVM                     TykJSVM
 	ResponseChain            []TykResponseHandler
 	RoundRobin               RoundRobin
 	URLRewriteEnabled        bool
@@ -208,6 +208,7 @@ func (a APIDefinitionLoader) MakeSpec(def *apidef.APIDefinition, logger *logrus.
 
 	// Create and init the virtual Machine
 	if config.Global().EnableJSVM {
+		spec.JSVM = InitJSVM()
 		spec.JSVM.Init(spec, logger)
 	}
 
@@ -731,7 +732,7 @@ func (a APIDefinitionLoader) compileVirtualPathspathSpec(paths []apidef.VirtualM
 		// Extend with method actions
 		newSpec.VirtualPathSpec = stringSpec
 
-		preLoadVirtualMetaCode(&newSpec.VirtualPathSpec, &apiSpec.JSVM)
+		preLoadVirtualMetaCode(&newSpec.VirtualPathSpec, apiSpec.JSVM)
 
 		urlSpec = append(urlSpec, newSpec)
 	}

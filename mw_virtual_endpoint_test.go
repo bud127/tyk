@@ -10,6 +10,7 @@ import (
 
 const virtTestJS = `
 function testVirtData(request, session, config) {
+
 	var resp = {
 		Body: "foobar",
 		Headers: {
@@ -18,6 +19,7 @@ function testVirtData(request, session, config) {
 		},
 		Code: 202
 	}
+	console.log(TykJsResponse(resp, session.meta_data))
 	return TykJsResponse(resp, session.meta_data)
 }
 `
