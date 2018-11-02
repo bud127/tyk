@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/TykTechnologies/tyk/apidef"
+	"github.com/TykTechnologies/tyk/config"
 	"github.com/TykTechnologies/tyk/test"
 )
 
@@ -19,7 +20,7 @@ function testVirtData(request, session, config) {
 		},
 		Code: 202
 	}
-	console.log(TykJsResponse(resp, session.meta_data))
+	
 	return TykJsResponse(resp, session.meta_data)
 }
 `
@@ -57,7 +58,28 @@ func testPrepareVirtualEndpoint(js string, method string) {
 	})
 }
 
-func TestVirtualEndpoint(t *testing.T) {
+func TestVirtualEndpointOtto(t *testing.T) {
+	ts := newTykTestServer()
+	defer ts.Close()
+
+	testPrepareVirtualEndpoint(virtTestJS, "GET")
+
+	ts.Run(t, test.TestCase{
+		Path:      "/virt",
+		Code:      202,
+		BodyMatch: "foobar",
+		HeadersMatch: map[string]string{
+			"data-foo":   "x",
+			"data-bar-y": "3",
+		},
+	})
+}
+
+func TestVirtualEndpointGoja(t *testing.T) {
+	globalConf := config.Global()
+	globalConf.JSVM = "goja"
+	config.SetGlobal(globalConf)
+	defer resetTestConfig()
 	ts := newTykTestServer()
 	defer ts.Close()
 
