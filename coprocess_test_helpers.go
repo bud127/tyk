@@ -17,15 +17,11 @@ static int TestMessageLength(struct CoProcessMessage* object) {
 	return object->length;
 }
 
-static struct CoProcessMessage* TestDispatchHook(struct CoProcessMessage* object) {
-	struct CoProcessMessage* outputObject = malloc(sizeof *outputObject);
-
-	outputObject->p_data = object->p_data;
-	outputObject->length = object->length;
-
-	applyTestHooks(outputObject);
-
-	return outputObject;
+static void TestDispatchHook(struct CoProcessMessage* object, struct CoProcessMessage* newObject) {
+	struct CoProcessMessage* outputObject = malloc(sizeof *outputObject);		newObject->p_data = object->p_data;
+ 	newObject->length = object->length;
+	outputObject->p_data = object->p_data;		applyTestHooks(newObject);
+	outputObject->length = object->length;		return;
 };
 
 */
@@ -51,10 +47,11 @@ type TestDispatcher struct {
 
 /* Basic CoProcessDispatcher functions */
 
-func (d *TestDispatcher) Dispatch(objectPtr unsafe.Pointer) unsafe.Pointer {
+func (d *TestDispatcher) Dispatch(objectPtr unsafe.Pointer, newObjectPtr unsafe.Pointer) error {
 	object := (*C.struct_CoProcessMessage)(objectPtr)
-	newObjectPtr := C.TestDispatchHook(object)
-	return unsafe.Pointer(newObjectPtr)
+	newObject := (*C.struct_CoProcessMessage)(newObjectPtr)
+	C.TestDispatchHook(object, newObject)
+	return nil
 }
 
 func (d *TestDispatcher) DispatchEvent(eventJSON []byte) {
