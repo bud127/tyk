@@ -244,14 +244,31 @@ func (k *JWTMiddleware) getUserIdFromClaim(claims jwt.MapClaims) (string, error)
 	return "", errors.New(message)
 }
 
-func (k *JWTMiddleware) getScopeFromClaim(claims jwt.MapClaims) []string {
-	// get claim "scope" and turn it into slice of strings
-	if scope, found := claims["scope"].(string); found {
+func getScopeFromClaim(claims jwt.MapClaims, scopeClaimName string) []string {
+	// get claim with scopes and turn it into slice of strings
+	if scope, found := claims[scopeClaimName].(string); found {
 		return strings.Split(scope, " ") // by standard is space separated list of values
 	}
 
-	// claim "scope" is optional so return nothing if it is not present
+	// claim with scopes is optional so return nothing if it is not present
 	return nil
+}
+
+func mapScopeToPolicies(mapping map[string]string, scope []string) []string {
+	polIDs := []string{}
+
+	// add all policies matched from scope-policy mapping
+	policiesToApply := map[string]bool{}
+	for _, scopeItem := range scope {
+		if policyID, ok := mapping[scopeItem]; ok {
+			policiesToApply[policyID] = true
+		}
+	}
+	for id := range policiesToApply {
+		polIDs = append(polIDs, id)
+	}
+
+	return polIDs
 }
 
 // processCentralisedJWT Will check a JWT token centrally against the secret stored in the API Definition.
@@ -291,22 +308,15 @@ func (k *JWTMiddleware) processCentralisedJWT(r *http.Request, token *jwt.Token)
 
 		// apply policies from scope if scope-to-policy mapping is specified for this API
 		if k.Spec.JWTScopeToPolicyMapping != nil {
-			if scope := k.getScopeFromClaim(claims); scope != nil {
+			if scope := getScopeFromClaim(claims, "scope"); scope != nil {
 				polIDs := []string{
 					basePolicyID, // add base policy as a first one
 				}
 
 				// add all policies matched from scope-policy mapping
-				policiesToApply := map[string]bool{}
-				for _, scopeItem := range scope {
-					if policyID, ok := k.Spec.JWTScopeToPolicyMapping[scopeItem]; ok {
-						policiesToApply[policyID] = true
-					}
-				}
-				for id := range policiesToApply {
-					polIDs = append(polIDs, id)
-				}
+				mappedPolIDs := mapScopeToPolicies(k.Spec.JWTScopeToPolicyMapping, scope)
 
+				polIDs = append(polIDs, mappedPolIDs...)
 				newSession.SetPolicies(polIDs...)
 
 				// multiple policies assigned to a key, check if it is applicable
